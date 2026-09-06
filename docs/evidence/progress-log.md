@@ -173,13 +173,11 @@ All 3 servers show identical results since they were provisioned from the same b
 - .github/workflows/trivy-scan.yml (CI gate on CRITICAL CVEs)
 - trivy/reports/*.txt (human-readable scan reports; raw JSON excluded from git — large files, kept locally)
 
----
-
 **CI Pipeline Gate Evidence:** the GitHub Actions workflow correctly failed a real build when it detected a CRITICAL CVE (CVE-2026-31789, libcrypto3/OpenSSL heap buffer overflow) in the rebuilt nginx-fixed image, even after the earlier vulnerability reduction — proving the gate blocks any image with unresolved Critical vulnerabilities before it could reach a registry. Exit code 1, build correctly rejected.
 
 ---
 
-## Phase 7: SIEM Setup & Detection with Wazuh — IN PROGRESS
+## Phase 7: SIEM Setup & Detection with Wazuh — COMPLETE
 
 **Date:** 2026-09-06
 
@@ -189,6 +187,8 @@ All 3 servers show identical results since they were provisioned from the same b
 - Installed Wazuh agent v4.9.2 (version-pinned to match the manager) on server2 and server3 via Ansible, configured to report to the manager at 192.168.122.254
 - Verified both agents successfully enrolled and connected (Active: 2, Disconnected: 0 in the Wazuh dashboard)
 - Opened required firewall ports on the manager (1515, 1514, 443) via UFW
+- Enabled File Integrity Monitoring (FIM) via a shared agent group config (`/var/ossec/etc/shared/default/agent.conf`) with real-time monitoring on /etc/passwd, /etc/shadow, /etc/ssh, /etc/sudoers
+- Confirmed the default Wazuh ruleset already includes SSH brute-force detection rules (5710/5712/5760) tagged with MITRE ATT&CK T1110 — no extra rule authoring needed
 
 **Evidence:**
 
@@ -197,7 +197,6 @@ All 3 servers show identical results since they were provisioned from the same b
     002 server2 any <key>
 
 Wazuh dashboard "Agents Summary" widget confirms: Active (2), Disconnected (0).
-Last 24 hours alerts already populating (Medium: 316, Low: 290) from default rulesets, confirming log ingestion and rule evaluation are working end-to-end.
 
 **Troubleshooting notes (for reproducibility):** the Wazuh agent's "stable" apt repo installs the latest agent version by default, which is incompatible with an older pinned manager version (manager rejects newer agents with "Agent version must be lower or equal to manager version"). Fixed by pinning the agent package version to match the manager (`wazuh-agent=4.9.2-1`).
 
@@ -205,6 +204,46 @@ Last 24 hours alerts already populating (Medium: 316, Low: 290) from default rul
 - ansible/playbooks/install-wazuh-agent.yml
 - ansible/inventory/hosts.ini (agent_servers group — not committed, contains credentials)
 
-**Still to do in this phase:**
-- Enable File Integrity Monitoring (FIM) on sensitive paths (/etc/passwd, SSH config directory)
-- Configure a detection rule for SSH brute-force login attempts
+---
+
+## Phase 8: Attack Simulation — COMPLETE
+
+**Date:** 2026-09-06
+
+**What was done:**
+- **SSH brute-force simulation:** temporarily re-enabled SSH password authentication on server3 (reverted immediately after the test), then used Hydra from the control machine to attempt 5 logins with wrong passwords against server3 over SSH
+- **File integrity tampering simulation:** manually appended a line to `/etc/ssh/sshd_config` on server2 via SSH, outside the approved Ansible remediation process, to simulate unauthorized configuration drift
+
+**Evidence — SSH brute-force detection:**
+
+    $ hydra -l ubuntu -P /tmp/passwords.txt ssh://192.168.122.138 -t 4 -f
+    [DATA] attacking ssh://192.168.122.138:22/
+    1 of 1 target completed, 0 valid password found
+
+Wazuh alerts.log on the manager recorded 5 matching alerts:
+
+    Rule: 5760 (level 5) -> 'sshd: authentication failed.'
+    (x5, one per Hydra attempt, timestamps matching the attack window)
+
+Wazuh Threat Hunting dashboard showed "Authentication failure: 9" and MITRE ATT&CK categories "Password Guessing" and "SSH" populated in the last-24-hours view, confirming detection end-to-end.
+
+**Evidence — File Integrity Monitoring detection:**
+
+    $ ssh ubuntu@192.168.122.235 "echo '# unauthorized test change' | sudo tee -a /etc/ssh/sshd_config"
+
+Wazuh alerts.log recorded:
+
+    Rule: 550 (level 7) -> 'Integrity checksum changed.'
+    File '/etc/ssh/sshd_config' modified (server2)
+    Old sha1sum was: 'f5041fa4818481172e7cde3a4a08b314cd22589e'
+
+Both detections fired within seconds of the simulated action, with timestamps matching. Test changes were reverted immediately after capturing evidence (password auth re-disabled on server3, unauthorized line removed from server2's sshd_config).
+
+**Repo artifacts:** this log serves as the evidence record (Wazuh dashboard screenshots also captured separately).
+
+---
+
+## Phase 9: Security Posture Dashboard (Grafana) — NEXT
+
+**What's planned:**
+- Build a Grafana dashboard fed from Wazuh/OpenSCAP data showing: current CIS compliance score per server, open vulnerability count by severity, and recent security alerts (failed logins, file integrity violations) over time
