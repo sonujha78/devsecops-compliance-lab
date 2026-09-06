@@ -1,0 +1,8 @@
+*.retry
+*.log
+.vagrant/
+*.qcow2
+*.img
+ansible/inventory/hosts.ini
+*.pem
+*.key
