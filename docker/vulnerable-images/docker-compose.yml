@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  old-nginx:
+    image: nginx:1.14.0
+    container_name: vuln-nginx
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+
+  old-node:
+    image: node:10.15.0
+    container_name: vuln-node
+    command: sleep infinity
+    restart: unless-stopped
+
+  old-python:
+    image: python:3.6.9
+    container_name: vuln-python
+    command: sleep infinity
+    restart: unless-stopped

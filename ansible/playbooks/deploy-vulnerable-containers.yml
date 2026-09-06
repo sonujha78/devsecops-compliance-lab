@@ -1,0 +1,26 @@
+---
+- name: Deploy intentionally outdated containers for vulnerability scanning
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Install docker-compose plugin
+      apt:
+        name: docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Create directory for vulnerable images setup
+      file:
+        path: /opt/vulnerable-images
+        state: directory
+        mode: '0755'
+
+    - name: Copy docker-compose file
+      copy:
+        src: ../../docker/vulnerable-images/docker-compose.yml
+        dest: /opt/vulnerable-images/docker-compose.yml
+
+    - name: Pull and start vulnerable containers
+      community.docker.docker_compose_v2:
+        project_src: /opt/vulnerable-images
+        state: present
