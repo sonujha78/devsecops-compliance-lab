@@ -6,3 +6,4 @@
 ansible/inventory/hosts.ini
 *.pem
 *.key
+vms/seed*/*.iso

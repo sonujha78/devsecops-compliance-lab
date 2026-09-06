@@ -1,0 +1,15 @@
+#cloud-config
+hostname: server3
+manage_etc_hosts: true
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: sudo
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCZVccAMtnlt8fQOV22H3UaNaUTXsB1cFfMLpwEBCA7x0IY4zsaBtnInlbzDwOxePnsJKCl57R0QJcGhgySsQVWuaZ1Vjq6ByqPHFN9iqv19TIkYdZzInk+7UUXtlz1oXsCME7ZOrV++730aE1WwFVAE8UeMnIxodlPAJ+pzHkvOHx5SimNVJ7LYWAy87qFGZ3ih9t970wiscfih/+MZZhxT1vg1SfGz5wrvS3ExYhBHrIDMH8pCgW1K9MIMw2F409JQnh7vqlSSf/1yGNyhB/YzSXT6W/r2WyiZQccOow++IIfBuHyzh7nQowkXxXGzxGjZf5PmCaARZvvIgiHFU8Qmljuz+Ib/alosWxKR5D/ZEcwU0fK3wK7Ux7auL07YCDucKyiw3k3lBX4yADfx7e9vJF3aJmrRrnk6FkBdb1As456UnfOL33Ywu65pIZ6sz0Cu0kIq443FdKFXoPxume/s1Lsq875PuCg3qW2OtR91Ln0q0wokeQlp2YrSKcdb8+OM9DFdIrOssPgX9clPPtHs6CvxuruKySsDz+1vNrt8JYLqHSPyoWdexTxC4fwuhMbLog8WtGQ4OVfOY3t5lHjedJi4p61GVKw0vHkQrUQHLG3zniUMwfrz1KBZ3saX0NIAgAr/X3QOfi0tdiCGXXXiWVcWXwOerTz9eYtPpQ6vQ== sonu@sonu-KeenAble
+chpasswd:
+  list: |
+    ubuntu:ubuntu123
+  expire: false
+ssh_pwauth: true
