@@ -175,6 +175,10 @@ All 3 servers show identical results since they were provisioned from the same b
 
 ---
 
+**CI Pipeline Gate Evidence:** the GitHub Actions workflow correctly failed a real build when it detected a CRITICAL CVE (CVE-2026-31789, libcrypto3/OpenSSL heap buffer overflow) in the rebuilt nginx-fixed image, even after the earlier vulnerability reduction — proving the gate blocks any image with unresolved Critical vulnerabilities before it could reach a registry. Exit code 1, build correctly rejected.
+
+---
+
 ## Phase 7: SIEM Setup & Detection with Wazuh — NEXT
 
 **What's planned:**
