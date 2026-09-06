@@ -56,13 +56,6 @@ Stack: OpenSCAP + Trivy + Wazuh + Ansible + Docker + Grafana
 
 ---
 
-## Phase 3: Vulnerable Containers Setup — NEXT
-
-**What's planned:**
-- Deploy 2-3 containers using deliberately outdated base images on the servers (for later Trivy scanning)
-
----
-
 ## Phase 3: Vulnerable Containers Deployment — COMPLETE
 
 **Date:** 2026-09-06
@@ -80,10 +73,10 @@ Stack: OpenSCAP + Trivy + Wazuh + Ansible + Docker + Grafana
     server3  : ok=5  changed=3  unreachable=0  failed=0  skipped=0
 
     $ ssh ubuntu@192.168.122.254 "docker ps"
-    CONTAINER ID   IMAGE          COMMAND                  STATUS         PORTS                     NAMES
-    0a4a1b8c2da4   python:3.6.9   "sleep infinity"         Up 5 minutes                             vuln-python
-    349125d6921d   node:10.15.0   "sleep infinity"         Up 5 minutes                             vuln-node
-    049da8eaa670   nginx:1.14.0   "nginx -g 'daemon of...'"   Up 5 minutes   0.0.0.0:8081->80/tcp   vuln-nginx
+    CONTAINER ID   IMAGE          COMMAND                     STATUS         PORTS                     NAMES
+    0a4a1b8c2da4   python:3.6.9   "sleep infinity"            Up 5 minutes                             vuln-python
+    349125d6921d   node:10.15.0   "sleep infinity"            Up 5 minutes                             vuln-node
+    049da8eaa670   nginx:1.14.0   "nginx -g 'daemon of...'"   Up 5 minutes   0.0.0.0:8081->80/tcp     vuln-nginx
 
 **Repo artifacts:** docker/vulnerable-images/docker-compose.yml, ansible/playbooks/deploy-vulnerable-containers.yml
 
