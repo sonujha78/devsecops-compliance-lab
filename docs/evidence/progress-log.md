@@ -179,9 +179,32 @@ All 3 servers show identical results since they were provisioned from the same b
 
 ---
 
-## Phase 7: SIEM Setup & Detection with Wazuh — NEXT
+## Phase 7: SIEM Setup & Detection with Wazuh — IN PROGRESS
 
-**What's planned:**
-- Deploy Wazuh manager and install agents on all 3 servers
-- Enable File Integrity Monitoring (FIM) on sensitive paths (/etc/passwd, SSH config)
-- Configure a detection rule for SSH brute-force attempts
+**Date:** 2026-09-06
+
+**What was done:**
+- Increased server1's RAM to 4GB and disk to 49GB to host the Wazuh manager, indexer, and dashboard (single-node all-in-one install)
+- Installed Wazuh 4.9.2 manager + indexer + dashboard on server1 using the official Wazuh installation assistant
+- Installed Wazuh agent v4.9.2 (version-pinned to match the manager) on server2 and server3 via Ansible, configured to report to the manager at 192.168.122.254
+- Verified both agents successfully enrolled and connected (Active: 2, Disconnected: 0 in the Wazuh dashboard)
+- Opened required firewall ports on the manager (1515, 1514, 443) via UFW
+
+**Evidence:**
+
+    $ sudo cat /var/ossec/etc/client.keys
+    001 server3 any <key>
+    002 server2 any <key>
+
+Wazuh dashboard "Agents Summary" widget confirms: Active (2), Disconnected (0).
+Last 24 hours alerts already populating (Medium: 316, Low: 290) from default rulesets, confirming log ingestion and rule evaluation are working end-to-end.
+
+**Troubleshooting notes (for reproducibility):** the Wazuh agent's "stable" apt repo installs the latest agent version by default, which is incompatible with an older pinned manager version (manager rejects newer agents with "Agent version must be lower or equal to manager version"). Fixed by pinning the agent package version to match the manager (`wazuh-agent=4.9.2-1`).
+
+**Repo artifacts:**
+- ansible/playbooks/install-wazuh-agent.yml
+- ansible/inventory/hosts.ini (agent_servers group — not committed, contains credentials)
+
+**Still to do in this phase:**
+- Enable File Integrity Monitoring (FIM) on sensitive paths (/etc/passwd, SSH config directory)
+- Configure a detection rule for SSH brute-force login attempts

@@ -1,0 +1,44 @@
+---
+- name: Install and configure Wazuh agent on all servers
+  hosts: agent_servers
+  become: yes
+  vars:
+    wazuh_manager_ip: "192.168.122.254"
+  tasks:
+    - name: Install prerequisites
+      apt:
+        name:
+          - gnupg
+          - apt-transport-https
+        state: present
+
+    - name: Add Wazuh GPG key
+      apt_key:
+        url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+        state: present
+
+    - name: Add Wazuh repository
+      apt_repository:
+        repo: "deb https://packages.wazuh.com/4.x/apt/ stable main"
+        state: present
+
+    - name: Install Wazuh agent
+      apt:
+        name: wazuh-agent=4.9.2-1
+        state: present
+        update_cache: yes
+      environment:
+        WAZUH_MANAGER: "{{ wazuh_manager_ip }}"
+
+    - name: Set Wazuh manager IP in agent config
+      lineinfile:
+        path: /var/ossec/etc/ossec.conf
+        regexp: '<address>.*</address>'
+        line: "    <address>{{ wazuh_manager_ip }}</address>"
+
+    - name: Enable and start wazuh-agent
+      systemd:
+        name: wazuh-agent
+        enabled: yes
+        state: started
+        daemon_reload: yes
