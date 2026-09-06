@@ -62,7 +62,7 @@ Stack: OpenSCAP + Trivy + Wazuh + Ansible + Docker + Grafana
 
 **What was done:**
 - Wrote Ansible playbook (`ansible/playbooks/deploy-vulnerable-containers.yml`) to deploy intentionally outdated Docker images across all 3 servers using docker-compose
-- Deployed containers: nginx:1.14.0, node:10.15.0, python:3.6.9 — chosen for known CVEs, to be scanned with Trivy in Phase 4
+- Deployed containers: nginx:1.14.0, node:10.15.0, python:3.6.9 — chosen for known CVEs, to be scanned with Trivy in Phase 6
 
 **Evidence:**
 
@@ -109,9 +109,40 @@ All 3 servers show identical results since they were provisioned from the same b
 
 ---
 
-## Phase 5: Remediation at Scale via Ansible — NEXT
+## Phase 5: Remediation at Scale via Ansible — COMPLETE
+
+**Date:** 2026-09-06
+
+**What was done:**
+- Wrote a single idempotent Ansible playbook (`ansible/playbooks/cis-remediation.yml`) covering the required CIS remediation areas at scale (no manual per-server fixes):
+  - SSH hardening (disable root login, disable password auth, disable empty passwords, LoginGraceTime, MaxAuthTries)
+  - Firewall (UFW default-deny incoming, SSH explicitly allowed, enabled)
+  - Password/account policy (min length 14, complexity rules, max/min/warn age)
+  - Disabled unused services where present (avahi-daemon, cups, rpcbind)
+  - File permission fixes on /etc/passwd, /etc/shadow, /etc/gshadow, /etc/group + world-writable file audit (none found)
+- Verified idempotency by running the playbook twice: first run `changed=15`, second run `changed=1` (only the sshd restart handler) — no false changes or breakage
+- Re-ran the OpenSCAP CIS Level 1 Server scan post-remediation to capture "after" evidence
+
+**Evidence — Before vs After Compliance Score:**
+
+| Server  | Score (Before) | Score (After) |
+|---------|------------------|------------------|
+| server1 | 68.05% | 68.70% |
+| server2 | 68.05% | 68.70% |
+| server3 | 68.05% | 68.70% |
+
+**Repo artifacts:**
+- ansible/playbooks/cis-remediation.yml
+- ansible/playbooks/openscap-postremediation-scan.yml
+- openscap/post-remediation-reports/SUMMARY.md
+- openscap/post-remediation-reports/server{1,2,3}-post-report.html
+
+---
+
+## Phase 6: Vulnerability Scanning with Trivy — NEXT
 
 **What's planned:**
-- Identify highest-severity failed CIS checks (SSH hardening, firewall, password policy, unused services, file permissions)
-- Write an idempotent Ansible playbook to remediate them across all 3 servers
-- Re-run the OpenSCAP scan and record the improved ("after") compliance score
+- Scan all Docker images (nginx:1.14.0, node:10.15.0, python:3.6.9) with Trivy
+- Identify CVEs by severity
+- Rebuild 2+ images with fixed base images, re-scan to show reduction
+- Integrate Trivy into a CI pipeline (GitHub Actions) to fail builds on Critical CVEs

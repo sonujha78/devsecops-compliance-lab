@@ -8,3 +8,4 @@ ansible/inventory/hosts.ini
 *.key
 vms/seed*/*.iso
 openscap/baseline-reports/*.xml
+openscap/post-remediation-reports/*.xml

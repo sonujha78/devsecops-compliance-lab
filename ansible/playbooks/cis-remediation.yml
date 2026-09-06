@@ -1,0 +1,177 @@
+---
+- name: CIS Level 1 Server Remediation
+  hosts: servers
+  become: yes
+  tasks:
+
+    ### --- SSH Hardening ---
+    - name: Disable SSH root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+        backup: yes
+
+    - name: Disable SSH password authentication (key-based only)
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        backup: yes
+
+    - name: Disable empty passwords over SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitEmptyPasswords'
+        line: 'PermitEmptyPasswords no'
+
+    - name: Set SSH protocol to modern default (remove legacy Protocol line if present)
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^Protocol'
+        state: absent
+
+    - name: Set SSH LoginGraceTime
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?LoginGraceTime'
+        line: 'LoginGraceTime 60'
+
+    - name: Set SSH MaxAuthTries
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?MaxAuthTries'
+        line: 'MaxAuthTries 4'
+
+    - name: Restart sshd to apply changes
+      service:
+        name: ssh
+        state: restarted
+
+    ### --- Firewall (UFW default-deny) ---
+    - name: Install UFW
+      apt:
+        name: ufw
+        state: present
+
+    - name: Set UFW default incoming policy to deny
+      ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Set UFW default outgoing policy to allow
+      ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: Allow SSH (port 22) through firewall
+      ufw:
+        rule: allow
+        port: '22'
+        proto: tcp
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+
+    ### --- Password / Account Policies ---
+    - name: Install libpam-pwquality for password strength enforcement
+      apt:
+        name: libpam-pwquality
+        state: present
+
+    - name: Enforce minimum password length (14 chars)
+      lineinfile:
+        path: /etc/security/pwquality.conf
+        regexp: '^# minlen|^minlen'
+        line: 'minlen = 14'
+
+    - name: Require at least one uppercase character
+      lineinfile:
+        path: /etc/security/pwquality.conf
+        regexp: '^# ucredit|^ucredit'
+        line: 'ucredit = -1'
+
+    - name: Require at least one digit
+      lineinfile:
+        path: /etc/security/pwquality.conf
+        regexp: '^# dcredit|^dcredit'
+        line: 'dcredit = -1'
+
+    - name: Set password max age (90 days)
+      lineinfile:
+        path: /etc/login.defs
+        regexp: '^PASS_MAX_DAYS'
+        line: 'PASS_MAX_DAYS   90'
+
+    - name: Set password min age (1 day)
+      lineinfile:
+        path: /etc/login.defs
+        regexp: '^PASS_MIN_DAYS'
+        line: 'PASS_MIN_DAYS   1'
+
+    - name: Set password warning age (7 days)
+      lineinfile:
+        path: /etc/login.defs
+        regexp: '^PASS_WARN_AGE'
+        line: 'PASS_WARN_AGE   7'
+
+    ### --- Disable Unused Services ---
+    - name: Disable and stop avahi-daemon (if present)
+      service:
+        name: avahi-daemon
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    - name: Disable and stop cups (printing service, if present)
+      service:
+        name: cups
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    - name: Disable and stop rpcbind (if present)
+      service:
+        name: rpcbind
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    ### --- File Permission Fixes ---
+    - name: Set correct permissions on /etc/passwd
+      file:
+        path: /etc/passwd
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Set correct permissions on /etc/shadow
+      file:
+        path: /etc/shadow
+        mode: '0640'
+        owner: root
+        group: shadow
+
+    - name: Set correct permissions on /etc/gshadow
+      file:
+        path: /etc/gshadow
+        mode: '0640'
+        owner: root
+        group: shadow
+
+    - name: Set correct permissions on /etc/group
+      file:
+        path: /etc/group
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Find and fix world-writable files in /etc (report only, non-destructive)
+      shell: find /etc -xdev -type f -perm -0002 2>/dev/null || true
+      register: world_writable_files
+      changed_when: false
+
+    - name: Show world-writable files found (for audit trail)
+      debug:
+        var: world_writable_files.stdout_lines
