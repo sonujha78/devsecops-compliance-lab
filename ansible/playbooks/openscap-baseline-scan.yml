@@ -1,0 +1,30 @@
+---
+- name: Run OpenSCAP CIS baseline compliance scan
+  hosts: servers
+  become: yes
+  vars:
+    ssg_path: "/opt/ssg/scap-security-guide-0.1.78/ssg-ubuntu2204-ds.xml"
+    profile: "xccdf_org.ssgproject.content_profile_cis_level1_server"
+  tasks:
+    - name: Run OpenSCAP scan (baseline - before remediation)
+      command: >
+        oscap xccdf eval
+        --profile {{ profile }}
+        --results /tmp/{{ inventory_hostname }}-baseline-results.xml
+        --report /tmp/{{ inventory_hostname }}-baseline-report.html
+        {{ ssg_path }}
+      register: scan_result
+      failed_when: scan_result.rc > 2
+      changed_when: false
+
+    - name: Fetch HTML report to control machine
+      fetch:
+        src: "/tmp/{{ inventory_hostname }}-baseline-report.html"
+        dest: "openscap/baseline-reports/{{ inventory_hostname }}-baseline-report.html"
+        flat: yes
+
+    - name: Fetch XML results to control machine
+      fetch:
+        src: "/tmp/{{ inventory_hostname }}-baseline-results.xml"
+        dest: "openscap/baseline-reports/{{ inventory_hostname }}-baseline-results.xml"
+        flat: yes

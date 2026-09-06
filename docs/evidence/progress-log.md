@@ -82,8 +82,36 @@ Stack: OpenSCAP + Trivy + Wazuh + Ansible + Docker + Grafana
 
 ---
 
-## Phase 4: OpenSCAP Baseline Compliance Audit — NEXT
+## Phase 4: OpenSCAP Baseline Compliance Audit — COMPLETE
+
+**Date:** 2026-09-06
+
+**What was done:**
+- Installed OpenSCAP (`libopenscap8`) and downloaded SCAP Security Guide v0.1.78 content on all 3 servers via Ansible
+- Ran a baseline compliance scan against the **CIS Ubuntu Linux 22.04 LTS Benchmark for Level 1 - Server** profile (`xccdf_org.ssgproject.content_profile_cis_level1_server`) on all 3 servers — this is the pre-remediation ("before") evidence
+- Fetched HTML/XML reports back to the control machine
+
+**Evidence — Baseline Compliance Score (before remediation):**
+
+| Server  | Pass | Fail | Not Applicable | Compliance Score |
+|---------|------|------|-----------------|-------------------|
+| server1 | 1740 | 817  | 58              | ~68% |
+| server2 | 1740 | 817  | 58              | ~68% |
+| server3 | 1740 | 817  | 58              | ~68% |
+
+All 3 servers show identical results since they were provisioned from the same base image with no hardening applied.
+
+**Repo artifacts:**
+- ansible/playbooks/install-openscap.yml
+- ansible/playbooks/openscap-baseline-scan.yml
+- openscap/baseline-reports/SUMMARY.md
+- openscap/baseline-reports/server{1,2,3}-baseline-report.html (raw XML results excluded from git — too large, kept locally)
+
+---
+
+## Phase 5: Remediation at Scale via Ansible — NEXT
 
 **What's planned:**
-- Run OpenSCAP scan against CIS Ubuntu Benchmark on each server
-- Record baseline pass/fail compliance score ("before" evidence)
+- Identify highest-severity failed CIS checks (SSH hardening, firewall, password policy, unused services, file permissions)
+- Write an idempotent Ansible playbook to remediate them across all 3 servers
+- Re-run the OpenSCAP scan and record the improved ("after") compliance score

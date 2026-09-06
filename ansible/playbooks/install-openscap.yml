@@ -1,0 +1,44 @@
+---
+- name: Install OpenSCAP scanner and SCAP Security Guide content
+  hosts: servers
+  become: yes
+  vars:
+    ssg_version: "0.1.78"
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install OpenSCAP libraries and CLI tool
+      apt:
+        name:
+          - libopenscap8
+          - python3-openscap
+          - unzip
+        state: present
+
+    - name: Download SCAP Security Guide content
+      get_url:
+        url: "https://github.com/ComplianceAsCode/content/releases/download/v{{ ssg_version }}/scap-security-guide-{{ ssg_version }}.zip"
+        dest: "/tmp/ssg.zip"
+
+    - name: Create SSG content directory
+      file:
+        path: /opt/ssg
+        state: directory
+        mode: '0755'
+
+    - name: Unzip SSG content
+      unarchive:
+        src: /tmp/ssg.zip
+        dest: /opt/ssg
+        remote_src: yes
+
+    - name: Verify oscap tool works
+      command: oscap --version
+      register: oscap_version
+      changed_when: false
+
+    - name: Show oscap version
+      debug:
+        var: oscap_version.stdout_lines
