@@ -1,0 +1,36 @@
+---
+- name: Scan Docker images with Trivy for vulnerabilities
+  hosts: server1
+  become: yes
+  vars:
+    images:
+      - { name: "nginx:1.14.0", tag: "nginx" }
+      - { name: "node:10.15.0", tag: "node" }
+      - { name: "python:3.6.9", tag: "python" }
+  tasks:
+    - name: Run Trivy scan (JSON output) for each image
+      command: >
+        trivy image --timeout 20m --format json --output /tmp/trivy-{{ item.tag }}.json {{ item.name }}
+      loop: "{{ images }}"
+      register: scan_results
+      changed_when: false
+
+    - name: Run Trivy scan (human-readable table output) for each image
+      command: >
+        trivy image --timeout 20m --format table --output /tmp/trivy-{{ item.tag }}.txt {{ item.name }}
+      loop: "{{ images }}"
+      changed_when: false
+
+    - name: Fetch JSON reports to control machine
+      fetch:
+        src: "/tmp/trivy-{{ item.tag }}.json"
+        dest: "trivy/reports/trivy-{{ item.tag }}.json"
+        flat: yes
+      loop: "{{ images }}"
+
+    - name: Fetch table reports to control machine
+      fetch:
+        src: "/tmp/trivy-{{ item.tag }}.txt"
+        dest: "trivy/reports/trivy-{{ item.tag }}.txt"
+        flat: yes
+      loop: "{{ images }}"

@@ -1,0 +1,29 @@
+name: Trivy Vulnerability Scan Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build image (nginx-fixed example)
+        run: docker build -t nginx-fixed:ci -f docker/fixed-images/Dockerfile.nginx-fixed docker/fixed-images
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'nginx-fixed:ci'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL'
+
+      - name: Fail build message
+        if: failure()
+        run: echo "Build blocked - CRITICAL vulnerabilities detected in image. Vulnerable images must not reach the registry."

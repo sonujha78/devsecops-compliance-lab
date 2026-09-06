@@ -1,0 +1,51 @@
+---
+- name: Build fixed images and re-scan with Trivy
+  hosts: server1
+  become: yes
+  vars:
+    fixed_images:
+      - { name: "nginx-fixed:latest", tag: "nginx-fixed", dockerfile: "Dockerfile.nginx-fixed" }
+      - { name: "node-fixed:latest", tag: "node-fixed", dockerfile: "Dockerfile.node-fixed" }
+  tasks:
+    - name: Create build directory
+      file:
+        path: /opt/fixed-images
+        state: directory
+        mode: '0755'
+
+    - name: Copy Dockerfiles
+      copy:
+        src: "../../docker/fixed-images/{{ item.dockerfile }}"
+        dest: "/opt/fixed-images/{{ item.dockerfile }}"
+      loop: "{{ fixed_images }}"
+
+    - name: Build fixed images
+      command: >
+        docker build -t {{ item.name }} -f /opt/fixed-images/{{ item.dockerfile }} /opt/fixed-images
+      loop: "{{ fixed_images }}"
+
+    - name: Re-scan fixed images with Trivy (JSON)
+      command: >
+        trivy image --timeout 20m --format json --output /tmp/trivy-{{ item.tag }}.json {{ item.name }}
+      loop: "{{ fixed_images }}"
+      changed_when: false
+
+    - name: Re-scan fixed images with Trivy (table)
+      command: >
+        trivy image --timeout 20m --format table --output /tmp/trivy-{{ item.tag }}.txt {{ item.name }}
+      loop: "{{ fixed_images }}"
+      changed_when: false
+
+    - name: Fetch JSON reports
+      fetch:
+        src: "/tmp/trivy-{{ item.tag }}.json"
+        dest: "trivy/reports/trivy-{{ item.tag }}.json"
+        flat: yes
+      loop: "{{ fixed_images }}"
+
+    - name: Fetch table reports
+      fetch:
+        src: "/tmp/trivy-{{ item.tag }}.txt"
+        dest: "trivy/reports/trivy-{{ item.tag }}.txt"
+        flat: yes
+      loop: "{{ fixed_images }}"

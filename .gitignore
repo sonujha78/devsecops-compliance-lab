@@ -9,3 +9,4 @@ ansible/inventory/hosts.ini
 vms/seed*/*.iso
 openscap/baseline-reports/*.xml
 openscap/post-remediation-reports/*.xml
+trivy/reports/*.json

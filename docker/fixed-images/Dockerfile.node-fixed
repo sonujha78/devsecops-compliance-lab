@@ -1,0 +1,2 @@
+FROM node:20-alpine
+# Latest LTS Node.js on minimal Alpine base — drastically fewer CVEs

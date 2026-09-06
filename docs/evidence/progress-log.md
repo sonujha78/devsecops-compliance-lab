@@ -139,10 +139,45 @@ All 3 servers show identical results since they were provisioned from the same b
 
 ---
 
-## Phase 6: Vulnerability Scanning with Trivy — NEXT
+## Phase 6: Vulnerability Scanning with Trivy — COMPLETE
+
+**Date:** 2026-09-06
+
+**What was done:**
+- Installed Trivy v0.71.2 on all servers via Ansible
+- Scanned all 3 running images (nginx:1.14.0, node:10.15.0, python:3.6.9) for CVEs, broken down by severity
+- Rebuilt 2 images on updated, minimal base images (nginx:1.27-alpine, node:20-alpine) and re-scanned to prove vulnerability reduction
+- Added a GitHub Actions workflow (`.github/workflows/trivy-scan.yml`) that builds an image and fails the pipeline (`exit-code: 1`) if any CRITICAL severity CVE is found — vulnerable images never reach a registry
+
+**Evidence — CVE counts by severity (before rebuild):**
+
+| Image | Critical | High | Medium | Low |
+|-------|----------|------|--------|-----|
+| nginx:1.14.0 | 39 | 107 | 65 | 69 |
+| node:10.15.0 | 268 | 1295 | 1570 | 584 |
+| python:3.6.9 | 208 | 1672 | 2156 | 538 |
+
+**Evidence — CVE counts after rebuilding on updated base images:**
+
+| Image | Critical (Before → After) | High (Before → After) |
+|-------|------------------------------|---------------------------|
+| nginx (1.14.0 → 1.27-alpine) | 39 → 2 (95% reduction) | 107 → 32 (70% reduction) |
+| node (10.15.0 → 20-alpine) | 268 → 1 (99.6% reduction) | 1295 → 23 (98% reduction) |
+
+**Repo artifacts:**
+- ansible/playbooks/install-trivy.yml
+- ansible/playbooks/trivy-scan.yml
+- ansible/playbooks/trivy-rescan-fixed.yml
+- docker/fixed-images/Dockerfile.nginx-fixed
+- docker/fixed-images/Dockerfile.node-fixed
+- .github/workflows/trivy-scan.yml (CI gate on CRITICAL CVEs)
+- trivy/reports/*.txt (human-readable scan reports; raw JSON excluded from git — large files, kept locally)
+
+---
+
+## Phase 7: SIEM Setup & Detection with Wazuh — NEXT
 
 **What's planned:**
-- Scan all Docker images (nginx:1.14.0, node:10.15.0, python:3.6.9) with Trivy
-- Identify CVEs by severity
-- Rebuild 2+ images with fixed base images, re-scan to show reduction
-- Integrate Trivy into a CI pipeline (GitHub Actions) to fail builds on Critical CVEs
+- Deploy Wazuh manager and install agents on all 3 servers
+- Enable File Integrity Monitoring (FIM) on sensitive paths (/etc/passwd, SSH config)
+- Configure a detection rule for SSH brute-force attempts
