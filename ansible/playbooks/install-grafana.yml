@@ -1,0 +1,41 @@
+---
+- name: Install Grafana on server1
+  hosts: server1
+  become: yes
+  tasks:
+    - name: Install prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - software-properties-common
+          - wget
+        state: present
+
+    - name: Add Grafana GPG key
+      apt_key:
+        url: https://apt.grafana.com/gpg.key
+        state: present
+
+    - name: Add Grafana repository
+      apt_repository:
+        repo: "deb https://apt.grafana.com stable main"
+        state: present
+
+    - name: Install Grafana
+      apt:
+        name: grafana
+        state: present
+        update_cache: yes
+
+    - name: Enable and start Grafana
+      systemd:
+        name: grafana-server
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    - name: Allow Grafana port through firewall
+      community.general.ufw:
+        rule: allow
+        port: '3000'
+        proto: tcp
