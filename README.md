@@ -31,40 +31,44 @@ checkmark.
 
 ## Architecture
 
-```
-                          ┌─────────────────────────┐
-                          │   Control / Base Machine │
-                          │   (Ansible orchestrator, │
-                          │    KVM/libvirt host)     │
-                          └────────────┬─────────────┘
-                                       │ SSH / Ansible
-              ┌────────────────────────┼────────────────────────┐
-              │                        │                        │
-    ┌─────────▼─────────┐    ┌─────────▼─────────┐    ┌─────────▼─────────┐
-    │      server1       │    │      server2       │    │      server3       │
-    │  192.168.122.254   │    │  192.168.122.235   │    │  192.168.122.138   │
-    │  4 vCPU / 4GB RAM  │    │  2 vCPU / 2GB RAM  │    │  2 vCPU / 2GB RAM  │
-    │  49GB disk         │    │  20GB disk         │    │  20GB disk         │
-    │                     │    │                     │    │                     │
-    │  Docker +           │    │  Docker +           │    │  Docker +           │
-    │  vulnerable         │    │  vulnerable         │    │  vulnerable         │
-    │  containers          │    │  containers          │    │  containers          │
-    │  (nginx/node/python) │    │  (nginx/node/python) │    │  (nginx/node/python) │
-    │                     │    │                     │    │                     │
-    │  OpenSCAP + Trivy    │    │  OpenSCAP + Trivy    │    │  OpenSCAP + Trivy    │
-    │                     │    │                     │    │                     │
-    │  Wazuh Manager +     │◄───┤  Wazuh Agent         │    │  Wazuh Agent         │
-    │  Indexer + Dashboard │◄───┼──────────────────────┼────┤  (FIM + log forward) │
-    │  (SIEM core)          │    │  (FIM + log forward) │    │                     │
-    │                     │    │                     │    │                     │
-    │  Grafana              │    │                     │    │                     │
-    │  (security posture     │    │                     │    │                     │
-    │  dashboard, reads from │    │                     │    │                     │
-    │  Wazuh indexer)         │    │                     │    │                     │
-    └─────────────────────┘    └─────────────────────┘    └─────────────────────┘
+```mermaid
+flowchart TB
+    CTRL["🖥️ Control / Base Machine<br/>Ansible orchestrator + KVM/libvirt host"]
 
-    GitHub Actions CI ──► builds fixed images ──► Trivy scan ──► FAILS build on
-                                                                    Critical CVE
+    subgraph S1["server1 — 192.168.122.254<br/>4 vCPU / 4GB RAM / 49GB disk"]
+        D1["Docker: vulnerable containers<br/>(nginx / node / python)"]
+        O1["OpenSCAP + Trivy"]
+        W1["Wazuh Manager + Indexer + Dashboard<br/>(SIEM core)"]
+        G1["Grafana<br/>(security posture dashboard)"]
+    end
+
+    subgraph S2["server2 — 192.168.122.235<br/>2 vCPU / 2GB RAM / 20GB disk"]
+        D2["Docker: vulnerable containers"]
+        O2["OpenSCAP + Trivy"]
+        A2["Wazuh Agent<br/>(FIM + log forwarding)"]
+    end
+
+    subgraph S3["server3 — 192.168.122.138<br/>2 vCPU / 2GB RAM / 20GB disk"]
+        D3["Docker: vulnerable containers"]
+        O3["OpenSCAP + Trivy"]
+        A3["Wazuh Agent<br/>(FIM + log forwarding)"]
+    end
+
+    CI["⚙️ GitHub Actions CI<br/>builds fixed images → Trivy scan"]
+
+    CTRL -- "SSH / Ansible" --> S1
+    CTRL -- "SSH / Ansible" --> S2
+    CTRL -- "SSH / Ansible" --> S3
+
+    A2 -- "logs + alerts" --> W1
+    A3 -- "logs + alerts" --> W1
+    G1 -- "reads security data" --> W1
+
+    CI -- "❌ fails build on Critical CVE" --> CI
+
+    style W1 fill:#2d3748,stroke:#63b3ed,color:#fff
+    style G1 fill:#2d3748,stroke:#f6ad55,color:#fff
+    style CI fill:#3a2020,stroke:#fc8181,color:#fff
 ```
 
 All three VMs are provisioned via cloud-init on KVM/libvirt. `server1` doubles as the
